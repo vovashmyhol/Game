@@ -20,7 +20,12 @@
     -moz-user-select: none;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
-    touch-action: pan-y;
+}
+
+html {
+    height: 100%;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
 }
 
 body {
@@ -29,9 +34,10 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-height: 100vh;
-    padding: 20px;
+    min-height: 100%;
+    padding: 20px 20px 40px;
     overflow-x: hidden;
+    overflow-y: visible;
 }
 
 #app {

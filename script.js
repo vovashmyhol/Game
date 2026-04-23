@@ -535,80 +535,11 @@ window.removePlayer = removePlayer;
 // Disable right-click context menu
 document.addEventListener('contextmenu', e => e.preventDefault());
 
-// Telegram Mini App — rubber band scroll effect + prevent swipe-to-close
+// Telegram Mini App
 if (window.Telegram?.WebApp) {
     Telegram.WebApp.enableClosingConfirmation?.();
     Telegram.WebApp.expand();
 }
-
-(function initRubberBand() {
-    let touchStartY = 0;
-    let currentTranslate = 0;
-    let isDragging = false;
-    let isInsideScrollable = false;
-
-    const RESISTANCE = 0.35;   // растяжимость (0 = жёсткий, 1 = без сопротивления)
-    const MAX_PULL = 120;       // макс. пикселей растяжки
-    const SNAP_DURATION = 400;  // мс для возврата
-
-    function findScrollableParent(el) {
-        while (el && el !== document.body) {
-            const style = window.getComputedStyle(el);
-            const overflow = style.overflowY;
-            if ((overflow === 'auto' || overflow === 'scroll') && el.scrollHeight > el.clientHeight) {
-                return el;
-            }
-            el = el.parentElement;
-        }
-        return null;
-    }
-
-    function setTranslate(y) {
-        document.body.style.transform = `translateY(${y}px)`;
-        document.body.style.transition = 'none';
-    }
-
-    function snapBack() {
-        document.body.style.transition = `transform ${SNAP_DURATION}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
-        document.body.style.transform = 'translateY(0px)';
-        currentTranslate = 0;
-    }
-
-    document.addEventListener('touchstart', (e) => {
-        touchStartY = e.touches[0].clientY;
-        isDragging = false;
-        currentTranslate = 0;
-        isInsideScrollable = !!findScrollableParent(e.target);
-    }, { passive: true });
-
-    document.addEventListener('touchmove', (e) => {
-        const deltaY = e.touches[0].clientY - touchStartY;
-
-        // Внутри скроллируемого элемента — не мешаем
-        if (isInsideScrollable) return;
-
-        // Тянем вверх — просто блокируем закрытие
-        if (deltaY <= 0) {
-            if (isDragging) snapBack();
-            isDragging = false;
-            e.preventDefault();
-            return;
-        }
-
-        e.preventDefault();
-        isDragging = true;
-
-        // Формула резинки: нарастающее сопротивление
-        const rubber = MAX_PULL * (1 - Math.exp(-deltaY * RESISTANCE / MAX_PULL));
-        currentTranslate = rubber;
-        setTranslate(currentTranslate);
-    }, { passive: false });
-
-    document.addEventListener('touchend', () => {
-        if (isDragging) snapBack();
-        isDragging = false;
-    }, { passive: true });
-})();
 
 requestAnimationFrame(draw);
 updateUI();
