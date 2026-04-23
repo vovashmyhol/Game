@@ -419,9 +419,9 @@ function showWinner() {
         localStorage.setItem('arena_game_count', gameCount);
         updateUI();
 
-        // Auto-close after 3 seconds
+        // Auto-close after 5 seconds
         if (modalTimer) clearTimeout(modalTimer);
-        modalTimer = setTimeout(closeWinnerModal, 3000);
+        modalTimer = setTimeout(closeWinnerModal, 5000);
     }
 }
 
@@ -441,5 +441,9 @@ function isPointInPoly(p, poly) {
 }
 
 window.removePlayer = removePlayer;
+
+// Disable right-click context menu
+document.addEventListener('contextmenu', e => e.preventDefault());
+
 requestAnimationFrame(draw);
 updateUI();
