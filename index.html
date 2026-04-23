@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arena - Ricochet Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Main Game Card -->
+        <div class="game-card">
+            <div class="card-header">
+                <div class="total-pool-container">
+                    <span class="label">Тотал</span>
+                    <span id="total-pool-value">0.00</span>
+                    <img src="Валюта.webp" alt="currency" class="currency-img">
+                </div>
+            </div>
+
+            <div class="arena-container">
+                <canvas id="arena-canvas"></canvas>
+                
+                <!-- Waiting State -->
+                <div id="waiting-state" class="arena-overlay">
+                    <div class="waiting-text">Waiting !!!</div>
+                </div>
+                
+                <!-- Countdown Overlay -->
+                <div id="countdown-overlay" class="arena-overlay hidden">
+                    <div id="countdown-number">3</div>
+                </div>
+            </div>
+
+            <div class="card-footer">
+                <div class="player-count">
+                    Игроки • <span id="current-player-count">0</span>
+                </div>
+                <div id="game-count-display" class="game-id">
+                    Сыграно игр: 0
+                </div>
+            </div>
+        </div>
+
+        <!-- Setup Section -->
+        <div class="setup-section">
+            <div class="setup-header">
+                <h3>Участники</h3>
+                <button id="play-btn" class="btn primary disabled" disabled>ЗАПУСТИТЬ</button>
+            </div>
+            
+            <div class="player-input-row">
+                <input type="text" id="player-name" placeholder="Имя">
+                <input type="number" id="player-bet" placeholder="Ставка">
+                <button id="add-player-btn" class="btn-add">+</button>
+            </div>
+
+            <div id="players-list" class="players-list">
+                <!-- Players appear here -->
+            </div>
+        </div>
+
+        <!-- Full-screen Winner Modal -->
+        <div id="winner-modal" class="modal hidden">
+            <div class="modal-content">
+                <button id="close-modal-btn" class="modal-close">×</button>
+                <div class="winner-animation-icon">🏆</div>
+                <div class="winner-label">ПОБЕДИТЕЛЬ!</div>
+                <div id="winner-name-display" class="winner-name-large">Игрок</div>
+                <div class="modal-footer">Окно закроется через 3 сек...</div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
