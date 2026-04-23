@@ -7,7 +7,7 @@ const COLORS = [
 // State
 let players = [];
 let territories = [];
-let gameState = 'idle'; // idle, countdown, playing, result
+let gameState = 'idle'; // idle, countdown, aiming, playing, result
 let totalBet = 0;
 let gameCount = parseInt(localStorage.getItem('arena_game_count')) || 0;
 let modalTimer = null;
@@ -208,18 +208,64 @@ function generateTerritories() {
 class Puck {
     constructor() {
         this.radius = 15;
-        this.reset();
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.stopped = false;
+        // Arrow aiming
+        this.aiming = false;
+        this.arrowAngle = 0;       // current displayed angle
+        this.arrowTargetAngle = 0; // final angle = launch direction
+        this.arrowSpin = 0;        // angular velocity
+        this.arrowFriction = 0.96;
     }
 
     reset() {
-        this.x = canvas.width / 2;
-        this.y = canvas.height / 2;
-        const angle = Math.random() * Math.PI * 2;
-        const speed = 40 + Math.random() * 15; 
-        this.vx = Math.cos(angle) * speed;
-        this.vy = Math.sin(angle) * speed;
-        this.friction = 0.993; 
+        // Random position away from edges
+        const pad = 40;
+        this.x = pad + Math.random() * (canvas.width - pad * 2);
+        this.y = pad + Math.random() * (canvas.height - pad * 2);
         this.stopped = false;
+        this.vx = 0;
+        this.vy = 0;
+
+        // Pre-decide launch direction
+        this.arrowTargetAngle = Math.random() * Math.PI * 2;
+        // Start arrow spinning fast from random angle
+        this.arrowAngle = Math.random() * Math.PI * 2;
+        // Start arrow spinning fast — ~2-3 full rotations before stopping
+        // With friction 0.96, total angle = spin0 / (1-0.96) = spin0 * 25
+        // For ~3 rotations (18.85 rad): spin0 ≈ 0.75
+        this.arrowSpin = (Math.random() > 0.5 ? 1 : -1) * (0.55 + Math.random() * 0.25);
+        this.aiming = true;
+    }
+
+    updateArrow() {
+        if (!this.aiming) return;
+
+        // Compute shortest angular distance to target
+        let diff = this.arrowTargetAngle - this.arrowAngle;
+        // Normalise diff to [-PI, PI]
+        while (diff > Math.PI)  diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+
+        // Apply spin with friction
+        this.arrowSpin *= this.arrowFriction;
+
+        // Once spin is very slow, snap to target and launch
+        if (Math.abs(this.arrowSpin) < 0.004) {
+            this.aiming = false;
+
+            // Launch puck in the direction the arrow actually stopped at
+            const speed = 40 + Math.random() * 15;
+            this.vx = Math.cos(this.arrowAngle) * speed;
+            this.vy = Math.sin(this.arrowAngle) * speed;
+            gameState = 'playing';
+            return;
+        }
+
+        this.arrowAngle += this.arrowSpin;
     }
 
     update() {
@@ -236,14 +282,54 @@ class Puck {
             this.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.y));
         }
 
-        this.vx *= this.friction;
-        this.vy *= this.friction;
+        this.vx *= 0.993;
+        this.vy *= 0.993;
 
         if (Math.abs(this.vx) < 0.05 && Math.abs(this.vy) < 0.05) {
             this.vx = 0; this.vy = 0;
             this.stopped = true;
             setTimeout(showWinner, 500);
         }
+    }
+
+    drawArrow() {
+        const arrowLen = this.radius * 1.4;
+        const tipX = this.x + Math.cos(this.arrowAngle) * (this.radius + arrowLen);
+        const tipY = this.y + Math.sin(this.arrowAngle) * (this.radius + arrowLen);
+
+        ctx.save();
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#fff';
+        ctx.strokeStyle = '#fff';
+        ctx.fillStyle = '#fff';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+
+        // Stem
+        ctx.beginPath();
+        ctx.moveTo(
+            this.x + Math.cos(this.arrowAngle) * this.radius,
+            this.y + Math.sin(this.arrowAngle) * this.radius
+        );
+        ctx.lineTo(tipX, tipY);
+        ctx.stroke();
+
+        // Arrowhead
+        const headLen = 10;
+        const headAngle = 0.45;
+        ctx.beginPath();
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(
+            tipX - headLen * Math.cos(this.arrowAngle - headAngle),
+            tipY - headLen * Math.sin(this.arrowAngle - headAngle)
+        );
+        ctx.lineTo(
+            tipX - headLen * Math.cos(this.arrowAngle + headAngle),
+            tipY - headLen * Math.sin(this.arrowAngle + headAngle)
+        );
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
     }
 
     draw() {
@@ -337,7 +423,11 @@ function draw() {
         }
     });
 
-    if (gameState === 'playing') {
+    if (gameState === 'aiming') {
+        puck.updateArrow();
+        puck.draw();
+        puck.drawArrow();
+    } else if (gameState === 'playing') {
         puck.update();
         puck.draw();
     }
@@ -389,7 +479,7 @@ function startCountdown() {
         else {
             clearInterval(interval);
             countdownOverlay.classList.add('hidden');
-            gameState = 'playing';
+            gameState = 'aiming';
             puck.reset();
         }
     }, 1000);
@@ -444,6 +534,30 @@ window.removePlayer = removePlayer;
 
 // Disable right-click context menu
 document.addEventListener('contextmenu', e => e.preventDefault());
+
+// Telegram Mini App — prevent swipe-down close gesture
+// We block touchmove only when the user is NOT scrolling a scrollable element
+document.addEventListener('touchmove', (e) => {
+    // Allow scroll inside elements that can actually scroll
+    let el = e.target;
+    let canScroll = false;
+    while (el && el !== document.body) {
+        const style = window.getComputedStyle(el);
+        const overflow = style.overflowY;
+        const isScrollable = (overflow === 'auto' || overflow === 'scroll') && el.scrollHeight > el.clientHeight;
+        if (isScrollable) { canScroll = true; break; }
+        el = el.parentElement;
+    }
+    if (!canScroll) e.preventDefault();
+}, { passive: false });
+
+// Also tell Telegram SDK to disable closing if available
+if (window.Telegram?.WebApp) {
+    Telegram.WebApp.disableClosingConfirmation?.();
+    Telegram.WebApp.enableClosingConfirmation?.();
+    // Expand to full height so there's less chance of accidental close
+    Telegram.WebApp.expand();
+}
 
 requestAnimationFrame(draw);
 updateUI();
